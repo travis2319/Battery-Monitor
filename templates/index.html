@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proxmox Battery Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+        }
+        
+        .status-card h3 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #2a5298;
+            border-bottom: 2px solid #f0f8ff;
+            padding-bottom: 10px;
+        }
+        
+        .battery-percentage {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .battery-percentage.critical {
+            color: #dc3545;
+            animation: pulse 2s infinite;
+        }
+        
+        .battery-percentage.low {
+            color: #fd7e14;
+        }
+        
+        .battery-percentage.normal {
+            color: #28a745;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .battery-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        .battery-fill {
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.5s ease;
+            position: relative;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 50%, #17a2b8 100%);
+        }
+        
+        .battery-fill.critical {
+            background: linear-gradient(90deg, #dc3545 0%, #e74c3c 100%);
+        }
+        
+        .battery-fill.low {
+            background: linear-gradient(90deg, #fd7e14 0%, #ffc107 100%);
+        }
+        
+        .status-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+        
+        .status-info div {
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #2a5298;
+        }
+        
+        .status-info strong {
+            color: #2a5298;
+        }
+        
+        .alert-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .alert-section h3 {
+            color: #2a5298;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .alert-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            border-left: 4px solid #17a2b8;
+            background: #f8f9fa;
+        }
+        
+        .alert-item.critical {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        
+        .alert-item.warning {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+        }
+        
+        .timestamp {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.charging {
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-indicator.discharging {
+            background: #fd7e14;
+        }
+        
+        .status-indicator.full {
+            background: #17a2b8;
+        }
+        
+        .status-indicator.unknown {
+            background: #6c757d;
+        }
+        
+        .last-updated {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+            margin: 50px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔋 Proxmox Battery Monitor</h1>
+            <p>Real-time battery status and health monitoring</p>
+        </div>
+        
+        <div id="loading" class="loading">
+            Loading battery information...
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div class="status-grid">
+                <div class="status-card">
+                    <h3>Battery Level</h3>
+                    <div id="battery-percentage" class="battery-percentage">--</div>
+                    <div class="battery-bar">
+                        <div id="battery-fill" class="battery-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="status-info">
+                        <div><strong>Status:</strong> <span class="status-indicator" id="status-indicator"></span><span id="battery-status">Unknown</span></div>
+                        <div><strong>Time Remaining:</strong> <span id="time-remaining">--</span></div>
+                        <div><strong>AC Connected:</strong> <span id="ac-connected">--</span></div>
+                        <div><strong>Health:</strong> <span id="battery-health">--</span></div>
+                    </div>
+                </div>
+                
+                <div class="status-card">
+                    <h3>Battery Details</h3>
+                    <div class="status-info">
+                        <div><strong>Voltage:</strong> <span id="voltage">--</span></div>
+                        <div><strong>Current:</strong> <span id="current">--</span></div>
+                        <div><strong>Temperature:</strong> <span id="temperature">--</span></div>
+                        <div><strong>Cycle Count:</strong> <span id="cycle-count">--</span></div>
+                        <div><strong>Technology:</strong> <span id="technology">--</span></div>
+                        <div><strong>Manufacturer:</strong> <span id="manufacturer">--</span></div>
+                    </div>
+                </div>
+                
+                <div class="status-card">
+                    <h3>Capacity Information</h3>
+                    <div class="status-info">
+                        <div><strong>Full Capacity:</strong> <span id="capacity-full">--</span></div>
+                        <div><strong>Design Capacity:</strong> <span id="capacity-design">--</span></div>
+                        <div><strong>Model:</strong> <span id="model">--</span></div>
+                        <div><strong>Present:</strong> <span id="battery-present">--</span></div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert-section">
+                <h3>📨 Recent Alerts</h3>
+                <div id="alert-history">
+                    <div class="alert-item">
+                        <div>No alerts yet</div>
+                        <div class="timestamp">System monitoring active</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="last-updated">
+            Last updated: <span id="last-updated">Never</span>
+        </div>
+    </div>
+    
+    <script>
+        let batteryData = {};
+        let alertHistory = [];
+        
+        function updateBatteryDisplay(data) {
+            batteryData = data;
+            
+            // Update percentage
+            const percentage = data.percentage || 0;
+            const percentageElement = document.getElementById('battery-percentage');
+            percentageElement.textContent = percentage + '%';
+            
+            // Update percentage color
+            percentageElement.className = 'battery-percentage';
+            if (percentage <= 10) {
+                percentageElement.classList.add('critical');
+            } else if (percentage <= 20) {
+                percentageElement.classList.add('low');
+            } else {
+                percentageElement.classList.add('normal');
+            }
+            
+            // Update battery bar
+            const batteryFill = document.getElementById('battery-fill');
+            batteryFill.style.width = percentage + '%';
+            batteryFill.className = 'battery-fill';
+            if (percentage <= 10) {
+                batteryFill.classList.add('critical');
+            } else if (percentage <= 20) {
+                batteryFill.classList.add('low');
+            }
+            
+            // Update status indicator
+            const statusIndicator = document.getElementById('status-indicator');
+            const status = data.status || 'Unknown';
+            statusIndicator.className = 'status-indicator';
+            
+            switch(status.toLowerCase()) {
+                case 'charging':
+                    statusIndicator.classList.add('charging');
+                    break;
+                case 'discharging':
+                    statusIndicator.classList.add('discharging');
+                    break;
+                case 'full':
+                    statusIndicator.classList.add('full');
+                    break;
+                default:
+                    statusIndicator.classList.add('unknown');
+            }
+            
+            // Update all status fields
+            document.getElementById('battery-status').textContent = status;
+            document.getElementById('time-remaining').textContent = data.time_remaining || 'Unknown';
+            document.getElementById('ac-connected').textContent = data.ac_connected ? 'Yes' : 'No';
+            document.getElementById('battery-health').textContent = (data.health || 0) + '%';
+            document.getElementById('voltage').textContent = (data.voltage || 0) + 'V';
+            document.getElementById('current').textContent = (data.current || 0) + 'A';
+            document.getElementById('temperature').textContent = (data.temperature || 0) + '°C';
+            document.getElementById('cycle-count').textContent = data.cycle_count || 'Unknown';
+            document.getElementById('technology').textContent = data.technology || 'Unknown';
+            document.getElementById('manufacturer').textContent = data.manufacturer || 'Unknown';
+            document.getElementById('capacity-full').textContent = data.capacity_full ? (data.capacity_full / 1000).toFixed(1) + ' Wh' : 'Unknown';
+            document.getElementById('capacity-design').textContent = data.capacity_design ? (data.capacity_design / 1000).toFixed(1) + ' Wh' : 'Unknown';
+            document.getElementById('model').textContent = data.model || 'Unknown';
+            document.getElementById('battery-present').textContent = data.battery_present ? 'Yes' : 'No';
+            
+            // Update timestamp
+            document.getElementById('last-updated').textContent = new Date().toLocaleString();
+        }
+        
+        function updateAlertHistory(alerts) {
+            const alertContainer = document.getElementById('alert-history');
+            
+            if (!alerts || alerts.length === 0) {
+                alertContainer.innerHTML = `
+                    <div class="alert-item">
+                        <div>No alerts yet</div>
+                        <div class="timestamp">System monitoring active</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Show last 10 alerts
+            const recentAlerts = alerts.slice(-10).reverse();
+            alertContainer.innerHTML = recentAlerts.map(alert => {
+                const alertClass = alert.subject.toLowerCase().includes('critical') ? 'critical' : 
+                                 alert.subject.toLowerCase().includes('warning') ? 'warning' : '';
+                const statusIcon = alert.sent ? '✅' : '❌';
+                
+                return `
+                    <div class="alert-item ${alertClass}">
+                        <div>${statusIcon} <strong>${alert.subject}</strong></div>
+                        <div>${alert.message}</div>
+                        <div class="timestamp">${new Date(alert.timestamp).toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function fetchBatteryStatus() {
+            try {
+                const response = await fetch('/api/battery-status');
+                const data = await response.json();
+                updateBatteryDisplay(data);
+                
+                // Show content, hide loading
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error fetching battery status:', error);
+                document.getElementById('loading').textContent = 'Error loading battery data';
+            }
+        }
+        
+        async function fetchAlertHistory() {
+            try {
+                const response = await fetch('/api/alert-history');
+                const data = await response.json();
+                updateAlertHistory(data);
+            } catch (error) {
+                console.error('Error fetching alert history:', error);
+            }
+        }
+        
+        function refreshData() {
+            fetchBatteryStatus();
+            fetchAlertHistory();
+        }
+        
+        // Initial load
+        fetchBatteryStatus();
+        fetchAlertHistory();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            fetchBatteryStatus();
+            fetchAlertHistory();
+        }, 30000);
+        
+        // Add some visual feedback when refreshing
+        function refreshData() {
+            const btn = document.querySelector('.refresh-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Refreshing...';
+            btn.disabled = true;
+            
+            Promise.all([fetchBatteryStatus(), fetchAlertHistory()]).finally(() => {
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 1000);
+            });
+        }
+    </script>
+</body>
+</html>
