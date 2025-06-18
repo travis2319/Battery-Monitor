@@ -1,0 +1,35 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+env/
+
+# Log files
+logs/
+*.log
+
+# msmtp config (sensitive email credentials)
+.msmtprc
+
+# Environment variable files
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Flask instance folder
+instance/
+
+# VSCode settings (if using VSCode)
+.vscode/
+
+# Compiled distributions
+dist/
+build/
+
+# Python egg metadata
+*.egg-info/
