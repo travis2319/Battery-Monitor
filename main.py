@@ -9,22 +9,42 @@ import sys
 import time
 import logging
 import threading
+from logging.handlers import TimedRotatingFileHandler
 from datetime import datetime, timedelta
-from flask import Flask, render_template, jsonify,request
+from flask import Flask, render_template, jsonify, request
 from battery_checker import BatteryChecker
 from email_notifier import EmailNotifier
 from config import Config
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/battery_monitor.log'),
-        logging.StreamHandler()
-    ]
+# Create logs directory if it doesn't exist
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
+# Setup logger
+logger = logging.getLogger('battery_monitor')
+logger.setLevel(logging.INFO)
+
+# Timed rotating file handler — rotates daily, keeps 7 days
+file_handler = TimedRotatingFileHandler(
+    'logs/battery_monitor.log',
+    when='D',             # D = daily
+    interval=1,           # every 1 day
+    backupCount=7         # keep last 7 log files
 )
-logger = logging.getLogger(__name__)
+file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_formatter)
+
+# Stream handler (console output)
+console_handler = logging.StreamHandler()
+console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(console_formatter)
+
+# Add handlers to logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+# Example log entry
+logger.info("Battery Monitor application started.")
 
 class BatteryMonitorApp:
     def __init__(self):
@@ -83,7 +103,7 @@ class BatteryMonitorApp:
         current_time = datetime.now()
         
         # Low battery alert
-        if status['percentage'] <= Config.LOW_BATTERY_THRESHOLD:
+        if status['percentage'] <= Config.LOW_BATTERY_THRESHOLD and not status['ac_connected']:
             if self.should_send_alert('low_battery', current_time):
                 self.send_alert(
                     'Low Battery Warning',
@@ -94,7 +114,7 @@ class BatteryMonitorApp:
                 self.last_alert_time['low_battery'] = current_time
         
         # Critical battery alert
-        if status['percentage'] <= Config.CRITICAL_BATTERY_THRESHOLD:
+        if status['percentage'] <= Config.CRITICAL_BATTERY_THRESHOLD and not status['ac_connected']:
             if self.should_send_alert('critical_battery', current_time):
                 self.send_alert(
                     'CRITICAL Battery Alert',
@@ -118,7 +138,7 @@ class BatteryMonitorApp:
                 self.last_alert_time['not_charging'] = current_time
         
         # Battery health alert
-        if status['percentage'] < Config.BATTERY_HEALTH_THRESHOLD:
+        if status['percentage'] < Config.BATTERY_HEALTH_THRESHOLD and not status['ac_connected']:
             if self.should_send_alert('battery_health', current_time):
                 self.send_alert(
                     'Battery Health Warning',

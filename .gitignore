@@ -7,10 +7,6 @@ __pycache__/
 venv/
 env/
 
-# Log files
-logs/
-*.log
-
 # msmtp config (sensitive email credentials)
 .msmtprc
 
